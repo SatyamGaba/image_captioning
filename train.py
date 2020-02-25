@@ -10,6 +10,7 @@ from model import EncoderCNN, DecoderRNN
 from torch.nn.utils.rnn import pack_padded_sequence
 from torchvision import transforms
 
+
 import csv
 from pycocotools.coco import COCO
 
@@ -48,8 +49,8 @@ def main(args):
             ids.append(entry['id'])
     
     # Build data loader
-    data_loader = get_loader(args.image_dir, args.caption_path, ids, vocab, 
-                             transform, args.batch_size,
+    train_loader = get_loader(args.image_dir, args.caption_path, ids, vocab, 
+                             transform, args.batch_size_train,
                              shuffle=True, num_workers=args.num_workers) 
 
     # Build the models
@@ -62,38 +63,68 @@ def main(args):
     optimizer = torch.optim.Adam(params, lr=args.learning_rate)
     
     # Train the models
-    total_step = len(data_loader)
-    args.num_epochs = 2
-    temperature = 0.6
-    for epoch in range(args.num_epochs):
-        for i, (images, captions, lengths) in enumerate(data_loader):
-            
-            # Set mini-batch dataset
-            images = images.to(device)
-            captions = captions.to(device)
-            targets = pack_padded_sequence(captions, lengths, batch_first=True)[0]
-            
-            # Forward, backward and optimize
-            features = encoder(images)
-            outputs = decoder(features, captions, lengths)
-            outputs = outputs / temperature
-            loss = criterion(outputs, targets)
-            decoder.zero_grad()
-            encoder.zero_grad()
-            loss.backward()
-            optimizer.step()
+    def train(init_epoch=0):
+        total_step = len(train_loader)
+        args.num_epochs = 2
+        temperature = 0.6
+        
+        train_losses = []
+        val_losses = []
+        prev_loss = -100
+        loss_increase_counter = 0
+        early_stop = True
+        early_stop_threshold = 5
+        
+        for epoch in range(args.num_epochs):
+            running_loss = 0.0
+            for i, (images, captions, lengths) in enumerate(train_loader):
 
-            # Print log info
-            if i % args.log_step == 0:
-                print('Epoch [{}/{}], Step [{}/{}], Loss: {:.4f}, Perplexity: {:5.4f}'
-                      .format(epoch, args.num_epochs, i, total_step, loss.item(), np.exp(loss.item()))) 
+                # Set mini-batch dataset
+                images = images.to(device)
+                captions = captions.to(device)
+                targets = pack_padded_sequence(captions, lengths, batch_first=True)[0]
+
+                # Forward, backward and optimize
+                features = encoder(images)
+                outputs = decoder(features, captions, lengths)
+                outputs = outputs / temperature
+                loss = criterion(outputs, targets)
+                decoder.zero_grad()
+                encoder.zero_grad()
+                loss.backward()
+                optimizer.step()
                 
-        # Save the model checkpoints
-        if (i+1) % args.save_step == 0:
-            torch.save(decoder.state_dict(), os.path.join(
-                args.model_path, 'decoder-{}.ckpt'.format(epoch+1)))
-            torch.save(encoder.state_dict(), os.path.join(
-                args.model_path, 'encoder-{}.ckpt'.format(epoch+1)))
+                running_loss += loss.item() * images.size(0)
+
+                # Print log info
+                if i % args.log_step == 0:
+                    print('Epoch [{}/{}], Step [{}/{}], Loss: {:.4f}, Perplexity: {:5.4f}'
+                          .format(epoch, args.num_epochs, i, total_step, loss.item(), np.exp(loss.item()))) 
+
+            # Save the model checkpoints
+            if (i+1) % args.save_step == 0:
+                torch.save(decoder.state_dict(), os.path.join(
+                    args.model_path, 'decoder-{}.ckpt'.format(epoch+1)))
+                torch.save(encoder.state_dict(), os.path.join(
+                    args.model_path, 'encoder-{}.ckpt'.format(epoch+1)))
+            
+            train_loss = running_loss/len(train_loader)
+            train_losses.append(train_loss)
+            val_loss = val(epoch)
+            val_losses.append(val_loss)
+            
+            if val_loss > prev_loss:
+                loss_increase_counter += 1
+            else:
+                loss_increase_counter = 0
+            if early_stop and loss_increase_counter > early_stop_threshold:
+                print("Early Stopping..")
+                break
+            prev_loss = val_loss
+            
+    def val(epoch):
+        
+    train(0)
 
 
 if __name__ == '__main__':
@@ -112,7 +143,8 @@ if __name__ == '__main__':
     parser.add_argument('--num_layers', type=int , default=1, help='number of layers in lstm')
     
     parser.add_argument('--num_epochs', type=int, default=5)
-    parser.add_argument('--batch_size', type=int, default=128)
+    parser.add_argument('--batch_size_train', type=int, default=128)
+#     parser.add_argument('--batch_size_val', type=int, default=64)
     parser.add_argument('--num_workers', type=int, default=2)
     parser.add_argument('--learning_rate', type=float, default=0.001)
     args = parser.parse_args()
