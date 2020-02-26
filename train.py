@@ -48,10 +48,26 @@ def main(args):
         for entry in coco.imgToAnns[img_id]:
             ids.append(entry['id'])
     
+    #get val ids
+    val_ids = []
+    with open('ValImageIds.csv', 'r') as f:
+        reader = csv.reader(f)
+        valIds = list(reader)
+
+    valIds = [int(i) for i in valIds[0]]
+    coco = COCO('./data/annotations/captions_val2014.json')
+    for img_id in valIds:
+        for entry in coco.imgToAnns[img_id]:
+            val_ids.append(entry['id'])
+    
     # Build data loader
     train_loader = get_loader(args.image_dir, args.caption_path, ids, vocab, 
                              transform, args.batch_size_train,
                              shuffle=True, num_workers=args.num_workers) 
+    
+    val_loader = get_loader(args.val_image_dir, args.val_caption_path, val_ids, vocab, 
+                             transform, args.val_batch_size,
+                             shuffle=True, num_workers=args.val_num_workers) 
 
     # Build the models
     encoder = EncoderCNN(args.embed_size).to(device)
@@ -62,11 +78,12 @@ def main(args):
     params = list(decoder.parameters()) + list(encoder.linear.parameters()) + list(encoder.bn.parameters())
     optimizer = torch.optim.Adam(params, lr=args.learning_rate)
     
+    temperature = 0.6
+    
     # Train the models
     def train(init_epoch=0):
         total_step = len(train_loader)
         args.num_epochs = 2
-        temperature = 0.6
         
         train_losses = []
         val_losses = []
@@ -122,7 +139,22 @@ def main(args):
                 break
             prev_loss = val_loss
             
-    def val(epoch):
+    def val(epoch):        
+        running_loss = 0.0
+        for i, (images, captions, lengths) in enumerate(val_loader):
+    
+            images = images.to(device)
+            captions = captions.to(device)
+            targets = pack_padded_sequence(captions, lengths, batch_first=True)[0]
+            
+            features = encoder(images)
+            outputs = decoder(features, captions, lengths)
+            outputs = outputs / temperature
+            loss = criterion(outputs, targets)
+            
+            running_loss += loss.item() * images.size(0)
+
+        return (running_loss/len(val_loader))
         
     train(0)
 
@@ -137,6 +169,9 @@ if __name__ == '__main__':
     parser.add_argument('--log_step', type=int , default=10, help='step size for prining log info')
     parser.add_argument('--save_step', type=int , default=1, help='epoch size for saving trained models')
     
+    parser.add_argument('--val_image_dir', type=str, default='data/images/val', help='directory for resized validation images')
+    parser.add_argument('--val_caption_path', type=str, default='data/annotations/captions_val2014.json', help='path for val annotation json file')
+
     # Model parameters
     parser.add_argument('--embed_size', type=int , default=256, help='dimension of word embedding vectors')
     parser.add_argument('--hidden_size', type=int , default=512, help='dimension of lstm hidden states')
@@ -144,8 +179,9 @@ if __name__ == '__main__':
     
     parser.add_argument('--num_epochs', type=int, default=5)
     parser.add_argument('--batch_size_train', type=int, default=128)
-#     parser.add_argument('--batch_size_val', type=int, default=64)
+    parser.add_argument('--batch_size_val', type=int, default=64)
     parser.add_argument('--num_workers', type=int, default=2)
+    parser.add_argument('--val_num_workers', type=int, default=2)
     parser.add_argument('--learning_rate', type=float, default=0.001)
     args = parser.parse_args()
     print(args)
