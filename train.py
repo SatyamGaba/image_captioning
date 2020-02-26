@@ -130,6 +130,12 @@ def main(args):
             val_loss = val(epoch)
             val_losses.append(val_loss)
             
+            #write results to csv
+            with open("./results/results.csv",'a+', newline='') as csv_file:
+                writer = csv.writer(csv_file, delimiter=',')
+                # writer.writerow(["Epoch", "Train Loss", "Val Loss"])
+                writer.writerow([epoch, train_loss,val_loss])
+            
             if val_loss > prev_loss:
                 loss_increase_counter += 1
             else:
