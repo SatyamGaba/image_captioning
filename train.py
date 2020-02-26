@@ -19,9 +19,11 @@ from pycocotools.coco import COCO
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def main(args):
+    model_name = 'lstm_temp=1'
+    model_path = os.path.join(args.model_path,model_name)
     # Create model directory
-    if not os.path.exists(args.model_path):
-        os.makedirs(args.model_path)
+    if not os.path.exists(model_path):
+        os.makedirs(model_path)
     
     # Image preprocessing, normalization for the pretrained resnet
     transform = transforms.Compose([ 
@@ -41,7 +43,6 @@ def main(args):
     with open('TrainImageIds.csv', 'r') as f:
         reader = csv.reader(f)
         trainIds = list(reader)
-
     trainIds = [int(i) for i in trainIds[0]]
     coco = COCO('./data/annotations/captions_train2014.json')
     for img_id in trainIds:
@@ -55,7 +56,7 @@ def main(args):
         valIds = list(reader)
 
     valIds = [int(i) for i in valIds[0]]
-    coco = COCO('./data/annotations/captions_val2014.json')
+    coco = COCO('./data/annotations/captions_train2014.json')
     for img_id in valIds:
         for entry in coco.imgToAnns[img_id]:
             val_ids.append(entry['id'])
@@ -66,19 +67,23 @@ def main(args):
                              shuffle=True, num_workers=args.num_workers) 
     
     val_loader = get_loader(args.val_image_dir, args.val_caption_path, val_ids, vocab, 
-                             transform, args.val_batch_size,
-                             shuffle=True, num_workers=args.val_num_workers) 
+                             transform, args.batch_size_val,
+                             shuffle=True, num_workers=args.num_workers) 
 
     # Build the models
     encoder = EncoderCNN(args.embed_size).to(device)
     decoder = DecoderRNN(args.embed_size, args.hidden_size, len(vocab), args.num_layers).to(device)
+    
+    # load pretrained model (optional)
+#     encoder.load_state_dict(torch.load('./models/encoder-42')) # put models name
+#     decoder.load_state_dict(torch.load('./models/decoder-42'))
     
     # Loss and optimizer
     criterion = nn.CrossEntropyLoss()
     params = list(decoder.parameters()) + list(encoder.linear.parameters()) + list(encoder.bn.parameters())
     optimizer = torch.optim.Adam(params, lr=args.learning_rate)
     
-    temperature = 0.6
+    temperature = args.temperature
     
     # Train the models
     def train(init_epoch=0):
@@ -121,9 +126,9 @@ def main(args):
             # Save the model checkpoints
             if (i+1) % args.save_step == 0:
                 torch.save(decoder.state_dict(), os.path.join(
-                    args.model_path, 'decoder-{}.ckpt'.format(epoch+1)))
+                    model_path, 'decoder-{}.ckpt'.format(epoch+1)))
                 torch.save(encoder.state_dict(), os.path.join(
-                    args.model_path, 'encoder-{}.ckpt'.format(epoch+1)))
+                    model_path, 'encoder-{}.ckpt'.format(epoch+1)))
             
             train_loss = running_loss/len(train_loader)
             train_losses.append(train_loss)
@@ -187,8 +192,9 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size_train', type=int, default=128)
     parser.add_argument('--batch_size_val', type=int, default=64)
     parser.add_argument('--num_workers', type=int, default=2)
-    parser.add_argument('--val_num_workers', type=int, default=2)
+#     parser.add_argument('--val_num_workers', type=int, default=2)
     parser.add_argument('--learning_rate', type=float, default=0.001)
+    parser.add_argument('--temperature' ,type=float, default=1.)
     args = parser.parse_args()
     print(args)
     main(args)

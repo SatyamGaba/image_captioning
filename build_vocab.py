@@ -36,7 +36,7 @@ def build_vocab(json, threshold):
         tokens = nltk.tokenize.word_tokenize(caption.lower())
         counter.update(tokens)
 
-        if (i+1) % 1000 == 0:
+        if (i+1) % 10000 == 0:
             print("[{}/{}] Tokenized the captions.".format(i+1, len(ids)))
 
     # If the word frequency is less than 'threshold', then the word is discarded.
