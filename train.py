@@ -14,7 +14,6 @@ from torchvision import transforms
 import csv
 from pycocotools.coco import COCO
 
-
 # Device configuration
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -24,6 +23,10 @@ def main(args):
     # Create model directory
     if not os.path.exists(model_path):
         os.makedirs(model_path)
+        
+    # Create results directory
+    if not os.path.isdir("./results"):
+        os.system('mkdir ./results')
     
     # Image preprocessing, normalization for the pretrained resnet
     transform = transforms.Compose([ 
@@ -49,6 +52,7 @@ def main(args):
         for entry in coco.imgToAnns[img_id]:
             ids.append(entry['id'])
     
+    
     #get val ids
     val_ids = []
     with open('ValImageIds.csv', 'r') as f:
@@ -60,16 +64,19 @@ def main(args):
     for img_id in valIds:
         for entry in coco.imgToAnns[img_id]:
             val_ids.append(entry['id'])
+            
+    
     
     # Build data loader
     train_loader = get_loader(args.image_dir, args.caption_path, ids, vocab, 
                              transform, args.batch_size_train,
                              shuffle=True, num_workers=args.num_workers) 
     
-    val_loader = get_loader(args.val_image_dir, args.val_caption_path, val_ids, vocab, 
+    val_loader = get_loader(args.val_image_dir, args.caption_path, val_ids, vocab, 
                              transform, args.batch_size_val,
                              shuffle=True, num_workers=args.num_workers) 
-
+    
+    
     # Build the models
     encoder = EncoderCNN(args.embed_size).to(device)
     decoder = DecoderRNN(args.embed_size, args.hidden_size, len(vocab), args.num_layers).to(device)
@@ -88,7 +95,7 @@ def main(args):
     # Train the models
     def train(init_epoch=0):
         total_step = len(train_loader)
-        args.num_epochs = 2
+#         args.num_epochs = 2
         
         train_losses = []
         val_losses = []
@@ -130,7 +137,7 @@ def main(args):
                 torch.save(encoder.state_dict(), os.path.join(
                     model_path, 'encoder-{}.ckpt'.format(epoch+1)))
             
-            train_loss = running_loss/len(train_loader)
+            train_loss = running_loss/len(ids)
             train_losses.append(train_loss)
             val_loss = val(epoch)
             val_losses.append(val_loss)
@@ -165,7 +172,7 @@ def main(args):
             
             running_loss += loss.item() * images.size(0)
 
-        return (running_loss/len(val_loader))
+        return (running_loss/len(val_ids))
         
     train(0)
 
