@@ -18,7 +18,7 @@ from pycocotools.coco import COCO
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def main(args):
-    model_name = 'rnn_temp=0.2'
+    model_name = 'rnn'
     model_path = os.path.join(args.model_path,model_name)
     # Create model directory
     if not os.path.exists(model_path):
@@ -30,7 +30,7 @@ def main(args):
     
     # Image preprocessing, normalization for the pretrained resnet
     transform = transforms.Compose([ 
-        transforms.Resize(args.crop_size*2),
+        transforms.Resize(args.crop_size),
         transforms.RandomCrop(args.crop_size),
         transforms.RandomHorizontalFlip(), 
         transforms.ToTensor(), 
@@ -82,8 +82,8 @@ def main(args):
     decoder = DecoderRNN(args.embed_size, args.hidden_size, len(vocab), args.num_layers).to(device)
     
     # load pretrained model (optional)
-#     encoder.load_state_dict(torch.load('./models/encoder-42')) # put models name
-#     decoder.load_state_dict(torch.load('./models/decoder-42'))
+#     encoder.load_state_dict(torch.load('./models/rnn/encoder-42.ckpt')) # put models name
+#     decoder.load_state_dict(torch.load('./models/rnn/decoder-42.ckpt'))
     
     # Loss and optimizer
     criterion = nn.CrossEntropyLoss()
@@ -102,8 +102,9 @@ def main(args):
         loss_increase_counter = 0
         early_stop = True
         early_stop_threshold = 5
+        best_model = None
         
-        for epoch in range(args.num_epochs):
+        for epoch in range(init_epoch, args.num_epochs):
             running_loss = 0.0
             for i, (images, captions, lengths) in enumerate(train_loader):
 
@@ -115,7 +116,7 @@ def main(args):
                 # Forward, backward and optimize
                 features = encoder(images)
                 outputs = decoder(features, captions, lengths)
-                outputs = outputs / temperature
+                outputs = outputs
                 loss = criterion(outputs, targets)
                 decoder.zero_grad()
                 encoder.zero_grad()
@@ -138,8 +139,15 @@ def main(args):
             
             train_loss = running_loss/len(ids)
             train_losses.append(train_loss)
-            val_loss = val(epoch)
+            val_loss tem= val(epoch)
             val_losses.append(val_loss)
+            
+            if val_loss == min(val_losses):
+                best_model = (encoder, decoder)
+                torch.save(decoder.state_dict(), os.path.join(
+                    model_path, 'decoder-best.ckpt'))
+                torch.save(encoder.state_dict(), os.path.join(
+                    model_path, 'encoder-best.ckpt'))
             
             #write results to csv
             with open("./results/{}_results.csv".format(model_name),'a+', newline='') as csv_file:
@@ -166,7 +174,7 @@ def main(args):
             
             features = encoder(images)
             outputs = decoder(features, captions, lengths)
-            outputs = outputs / temperature
+            outputs = outputs
             loss = criterion(outputs, targets)
             
             running_loss += loss.item() * images.size(0)
