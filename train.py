@@ -18,7 +18,7 @@ from pycocotools.coco import COCO
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def main(args):
-    model_name = 'lstm_temp=1'
+    model_name = 'rnn_temp=0.2'
     model_path = os.path.join(args.model_path,model_name)
     # Create model directory
     if not os.path.exists(model_path):
@@ -95,7 +95,6 @@ def main(args):
     # Train the models
     def train(init_epoch=0):
         total_step = len(train_loader)
-#         args.num_epochs = 2
         
         train_losses = []
         val_losses = []
@@ -195,7 +194,7 @@ if __name__ == '__main__':
     parser.add_argument('--hidden_size', type=int , default=512, help='dimension of lstm hidden states')
     parser.add_argument('--num_layers', type=int , default=1, help='number of layers in lstm')
     
-    parser.add_argument('--num_epochs', type=int, default=5)
+    parser.add_argument('--num_epochs', type=int, default=30)
     parser.add_argument('--batch_size_train', type=int, default=128)
     parser.add_argument('--batch_size_val', type=int, default=64)
     parser.add_argument('--num_workers', type=int, default=2)
