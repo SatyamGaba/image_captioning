@@ -139,11 +139,10 @@ def main(args):
             
             train_loss = running_loss/len(ids)
             train_losses.append(train_loss)
-            val_loss tem= val(epoch)
+            val_loss = val(epoch)
             val_losses.append(val_loss)
             
             if val_loss == min(val_losses):
-                best_model = (encoder, decoder)
                 torch.save(decoder.state_dict(), os.path.join(
                     model_path, 'decoder-best.ckpt'))
                 torch.save(encoder.state_dict(), os.path.join(
