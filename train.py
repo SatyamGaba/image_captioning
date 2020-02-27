@@ -14,7 +14,7 @@ from torchvision import transforms
 import csv
 from pycocotools.coco import COCO
 
-# Device configuration
+# Device configurationresul
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def main(args):
@@ -142,10 +142,10 @@ def main(args):
             val_losses.append(val_loss)
             
             #write results to csv
-            with open("./results/results.csv",'a+', newline='') as csv_file:
+            with open("./results/{}_results.csv".format(model_name),'a+', newline='') as csv_file:
                 writer = csv.writer(csv_file, delimiter=',')
                 # writer.writerow(["Epoch", "Train Loss", "Val Loss"])
-                writer.writerow([epoch, train_loss,val_loss])
+                writer.writerow([epoch+1, train_loss,val_loss])
             
             if val_loss > prev_loss:
                 loss_increase_counter += 1

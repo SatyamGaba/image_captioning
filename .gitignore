@@ -2,3 +2,6 @@
 *models
 *.ipynb_checkpoints
 *__pycache__
+TestImageIds.csv
+TrainImageIds.csv
+ValImageIds.csv
