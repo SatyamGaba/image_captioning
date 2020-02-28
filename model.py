@@ -3,6 +3,7 @@ import torch.nn as nn
 import torchvision.models as models
 from torch.nn.utils.rnn import pack_padded_sequence
 import torch.nn.functional as F
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 class EncoderCNN(nn.Module):
     def __init__(self, embed_size):
@@ -31,17 +32,23 @@ class DecoderRNN(nn.Module):
         self.lstm = nn.LSTM(embed_size, hidden_size, num_layers, batch_first=True) # change for LSTM or RNN
         self.linear = nn.Linear(hidden_size, vocab_size)
         self.max_seg_length = max_seq_length
+        weight = torch.load('./pretrain_weights.pt')
+        weight = weight.to(device)
+        self.prembed = nn.Embedding.from_pretrained(weight, freeze=True)
         
-    def forward(self, features, captions, lengths):
+    def forward(self, features, captions, lengths, pretrained):
         """Decode image feature vectors and generates captions."""
-        embeddings = self.embed(captions)
+        if pretrained:
+            embeddings = self.prembed(captions).float()
+        else:
+            embeddings = self.embed(captions)
         embeddings = torch.cat((features.unsqueeze(1), embeddings), 1)
         packed = pack_padded_sequence(embeddings, lengths, batch_first=True) 
         hiddens, _ = self.lstm(packed)
         outputs = self.linear(hiddens[0])
         return outputs
     
-    def sample(self, features, states=None):
+    def sample(self, features, pretrained, states=None):
         """Generate captions for given image features using greedy search."""
         sampled_ids = []
         inputs = features.unsqueeze(1)
@@ -50,12 +57,15 @@ class DecoderRNN(nn.Module):
             outputs = self.linear(hiddens.squeeze(1))            # outputs:  (batch_size, vocab_size)
             _, predicted = outputs.max(1)                        # predicted: (batch_size)
             sampled_ids.append(predicted)
-            inputs = self.embed(predicted)                       # inputs: (batch_size, embed_size)
+            if pretrained:
+                inputs = self.prembed(predicted).float()
+            else:
+                inputs = self.embed(predicted)                       # inputs: (batch_size, embed_size)
             inputs = inputs.unsqueeze(1)                         # inputs: (batch_size, 1, embed_size)
         sampled_ids = torch.stack(sampled_ids, 1)                # sampled_ids: (batch_size, max_seq_length)
         return sampled_ids
     
-    def stochastic_sample(self, features, temperature, states=None):
+    def stochastic_sample(self, features, temperature, pretrained, states=None):
         """Generate captions for given image features using greedy search."""
         sampled_ids = []
         inputs = features.unsqueeze(1)
@@ -67,7 +77,10 @@ class DecoderRNN(nn.Module):
             predicted = torch.multinomial(soft_out, 1).view(1)
             
             sampled_ids.append(predicted)
-            inputs = self.embed(predicted)                       # inputs: (batch_size, embed_size)
+            if pretrained:
+                inputs = self.prembed(predicted).float()
+            else:
+                inputs = self.embed(predicted)                       # inputs: (batch_size, embed_size)
             inputs = inputs.unsqueeze(1)                         # inputs: (batch_size, 1, embed_size)
         sampled_ids = torch.stack(sampled_ids, 1)                # sampled_ids: (batch_size, max_seq_length)
         return sampled_ids

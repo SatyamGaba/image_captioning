@@ -18,7 +18,7 @@ from pycocotools.coco import COCO
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def main(args):
-    model_name = 'rnn'
+    model_name = 'prelstm'
     model_path = os.path.join(args.model_path,model_name)
     # Create model directory
     if not os.path.exists(model_path):
@@ -90,7 +90,6 @@ def main(args):
     params = list(decoder.parameters()) + list(encoder.linear.parameters()) + list(encoder.bn.parameters())
     optimizer = torch.optim.Adam(params, lr=args.learning_rate)
     
-    temperature = args.temperature
     
     # Train the models
     def train(init_epoch=0):
@@ -115,7 +114,7 @@ def main(args):
 
                 # Forward, backward and optimize
                 features = encoder(images)
-                outputs = decoder(features, captions, lengths)
+                outputs = decoder(features, captions, lengths, pretrained=args.pretrained)
                 outputs = outputs
                 loss = criterion(outputs, targets)
                 decoder.zero_grad()
@@ -172,7 +171,7 @@ def main(args):
             targets = pack_padded_sequence(captions, lengths, batch_first=True)[0]
             
             features = encoder(images)
-            outputs = decoder(features, captions, lengths)
+            outputs = decoder(features, captions, lengths, pretrained=args.pretrained)
             outputs = outputs
             loss = criterion(outputs, targets)
             
@@ -207,7 +206,9 @@ if __name__ == '__main__':
     parser.add_argument('--num_workers', type=int, default=2)
 #     parser.add_argument('--val_num_workers', type=int, default=2)
     parser.add_argument('--learning_rate', type=float, default=0.001)
-    parser.add_argument('--temperature' ,type=float, default=1.)
+    parser.add_argument('--pretrained' ,type=bool, default=False)
+    
+    
     args = parser.parse_args()
     print(args)
     main(args)

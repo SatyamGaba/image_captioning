@@ -50,9 +50,9 @@ def main(args):
     # Generate an caption from the image
     feature = encoder(image_tensor)
     if args.stochastic:
-        sampled_ids = decoder.stochastic_sample(feature, temperature=args.temperature)
+        sampled_ids = decoder.stochastic_sample(feature, temperature=args.temperature, pretrained = args.pretrained)
     else:
-        sampled_ids = decoder.sample(feature)
+        sampled_ids = decoder.sample(feature, pretrained = args.pretrained)
     sampled_ids = sampled_ids[0].cpu().numpy()          # (1, max_seq_length) -> (max_seq_length)
     
     # Convert word_ids to words
@@ -83,5 +83,6 @@ if __name__ == '__main__':
     
     parser.add_argument('--stochastic', type=bool , default=False, help='stochastic or deterministic generator')
     parser.add_argument('--temperature', type=float , default=0.1, help='temperature')
+    parser.add_argument('--pretrained' ,type=bool, default=False)
     args = parser.parse_args()
     main(args)
