@@ -18,7 +18,7 @@ from pycocotools.coco import COCO
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def main(args):
-    model_name = 'prelstm'
+    model_name = args.model_name
     model_path = os.path.join(args.model_path,model_name)
     # Create model directory
     if not os.path.exists(model_path):
@@ -184,6 +184,7 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    parser.add_argument('--model_name', type=str, help='Model name for saving the results')
     parser.add_argument('--model_path', type=str, default='models/' , help='path for saving trained models')
     parser.add_argument('--crop_size', type=int, default=224 , help='size for randomly cropping images')
     parser.add_argument('--vocab_path', type=str, default='data/vocab.pkl', help='path for vocabulary wrapper')
