@@ -130,7 +130,7 @@ def main(args):
                           .format(epoch, args.num_epochs, i, total_step, loss.item(), np.exp(loss.item()))) 
 
             # Save the model checkpoints
-            if (i+1) % args.save_step == 0:
+            if (epoch+1) % args.save_step == 0:
                 torch.save(decoder.state_dict(), os.path.join(
                     model_path, 'decoder-{}.ckpt'.format(epoch+1)))
                 torch.save(encoder.state_dict(), os.path.join(
