@@ -130,7 +130,7 @@ def main(args):
                           .format(epoch, args.num_epochs, i, total_step, loss.item(), np.exp(loss.item()))) 
 
             # Save the model checkpoints
-            if (i+1) % args.save_step == 0:
+            if (epoch+1) % args.save_step == 0:
                 torch.save(decoder.state_dict(), os.path.join(
                     model_path, 'decoder-{}.ckpt'.format(epoch+1)))
                 torch.save(encoder.state_dict(), os.path.join(
@@ -197,7 +197,7 @@ if __name__ == '__main__':
     parser.add_argument('--val_caption_path', type=str, default='data/annotations/captions_val2014.json', help='path for val annotation json file')
 
     # Model parameters
-    parser.add_argument('--embed_size', type=int , default=256, help='dimension of word embedding vectors')
+    parser.add_argument('--embed_size', type=int , default=300, help='dimension of word embedding vectors')
     parser.add_argument('--hidden_size', type=int , default=512, help='dimension of lstm hidden states')
     parser.add_argument('--num_layers', type=int , default=1, help='number of layers in lstm')
     
