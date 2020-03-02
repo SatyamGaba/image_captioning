@@ -26,13 +26,13 @@ Be sure that you run `train_val_split.py` just once.
 
 To download pretrained embeddings execute `get_word2vec_embed.ipynb`
 
-#### 4. Train the model
+#### 2. Train the model
 
 ```bash
 python train.py 
 ```
 
-#### 5. Test the model 
+#### 3. Test the model 
 ```bash
 python test.py
 python infer.py --image='data/test/file_name.png'
