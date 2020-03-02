@@ -5,6 +5,7 @@ from pycocotools.coco import COCO
 
 val_dir = "./data/images/val/"
 train_dir = "./data/images/train/"
+train_ids_csv_orig = "TrainImageIdsOriginal.csv"
 train_ids_csv = "TrainImageIds.csv"
 val_ids_csv = "ValImageIds.csv"
 
@@ -14,7 +15,7 @@ coco = COCO('./data/annotations/captions_train2014.json')
 if not os.path.isdir(val_dir):
     os.makedirs(val_dir)
 
-with open(train_ids_csv, "r", newline='') as csvfile:
+with open(train_ids_csv_orig, "r", newline='') as csvfile:
     csvreader = csv.reader(csvfile, delimiter=',')
     img_ids =list(csvreader)
 img_ids = [int(i) for i in img_ids[0]]

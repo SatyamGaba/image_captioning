@@ -82,8 +82,8 @@ def main(args):
     decoder = DecoderRNN(args.embed_size, args.hidden_size, len(vocab), args.num_layers).to(device)
     
     # load pretrained model (optional)
-#     encoder.load_state_dict(torch.load('./models/rnn/encoder-42.ckpt')) # put models name
-#     decoder.load_state_dict(torch.load('./models/rnn/decoder-42.ckpt'))
+#     encoder.load_state_dict(torch.load('./models/rnn/encoder-best.ckpt')) # put checkpoint name
+#     decoder.load_state_dict(torch.load('./models/rnn/decoder-best.ckpt'))
     
     # Loss and optimizer
     criterion = nn.CrossEntropyLoss()
@@ -205,9 +205,8 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size_train', type=int, default=128)
     parser.add_argument('--batch_size_val', type=int, default=64)
     parser.add_argument('--num_workers', type=int, default=2)
-#     parser.add_argument('--val_num_workers', type=int, default=2)
     parser.add_argument('--learning_rate', type=float, default=0.001)
-    parser.add_argument('--pretrained' ,type=bool, default=False)
+    parser.add_argument('--pretrained' ,type=bool, default=False, help='whether to use pretrained embedding for decoder')
     
     
     args = parser.parse_args()
