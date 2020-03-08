@@ -14,7 +14,7 @@ The goal is to perform image captioning task on Common Objects in Context (COCO)
 `TrainImageIds.csv` - COCO dataset image ids for train set
 
 ## Usage
-
+Note: A subset of train data in COCO has been used and it has further been divided into train and validation set. A subset of validation data in COCO has been used as testing data.
 #### 1. Preprocessing
 
 Execute `get_datasets.ipynb` to copy dataset to `data/images`
